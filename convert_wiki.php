@@ -1,12 +1,11 @@
 <?php
 /**
  * Windows-compatible MediaWiki to GitHub Flavored Markdown converter
- * With improved media reference handling
  */
 
 // Import the MediaWiki XML export file path from command line arguments
 if ($argc < 2) {
-    echo "Usage: php media_fixed_converter.php <mediawiki_export.xml> [output_directory]\n";
+    echo "Usage: php convert_wiki.php <mediawiki_export.xml> [output_directory]\n";
     exit(1);
 }
 
