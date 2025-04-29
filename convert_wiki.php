@@ -468,6 +468,13 @@ foreach ($pages as $page) {
     }, $content);
     // Ensure an empty line after </figure>
     $content = preg_replace('/(<\/figure>)(?!\s*\n)/i', "$1\n\n", $content);
+    // Ensure $$...$$ math blocks start at line start and close at line end
+    $content = preg_replace_callback('/(^|\n)[ \t]*\$\$(.+?)\$\$/s', function($m) {
+        // Remove line breaks before closing $$
+        $math = preg_replace('/\n+/', ' ', $m[2]);
+        $math = preg_replace('/\s+$/', '', $math);
+        return "\n$$" . trim($math) . "$$\n";
+    }, $content);
 
     file_put_contents($output_file, $content);
     
