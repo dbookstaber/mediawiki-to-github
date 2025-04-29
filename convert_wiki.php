@@ -86,6 +86,35 @@ function fix_media_references($content) {
 
 // Function to convert HTML image tags to GitHub-compatible HTML
 function convert_image_tags($content) {
+    // Define a function to recursively flatten nested figures
+    $flatten_nested_figures = function($content) use (&$flatten_nested_figures) {
+        // Pattern to match nested figures (any level of nesting)
+        $pattern = '/<figure>\s*(?:<[^>]*>\s*)*<figure>/s';
+        
+        if (preg_match($pattern, $content)) {
+            // Find all nested figure structures
+            $nested_pattern = '/<figure>\s*(?:<[^>]*>\s*)*<figure>\s*(?:<[^>]*>\s*)*<img([^>]*)>\s*(?:<[^>]*>\s*)*<figcaption>(.*?)<\/figcaption>\s*(?:<[^>]*>\s*)*<\/figure>\s*(?:<[^>]*>\s*)*(?:<figcaption>.*?<\/figcaption>\s*)?<\/figure>/s';
+            
+            $content = preg_replace_callback($nested_pattern, function($matches) {
+                $img_attrs = $matches[1];
+                $inner_caption = trim($matches[2]);
+                
+                // Return the simplified figure structure with just one level
+                return "<figure>\n<img$img_attrs>\n<figcaption>$inner_caption</figcaption>\n</figure>";
+            }, $content);
+            
+            // Continue flattening until no more nested figures are found
+            return $flatten_nested_figures($content);
+        }
+        
+        return $content;
+    };
+    
+    // First flatten any nested figures that might exist
+    $content = $flatten_nested_figures($content);
+    
+    // Now process the flattened figures and other image tags
+    
     // Pattern to match figure with image and figcaption
     $pattern1 = '/<figure>\s*<img src="([^"]*)"([^>]*)\/>\s*<figcaption>(.*?)<\/figcaption>\s*<\/figure>/s';
     $content = preg_replace_callback($pattern1, function($matches) {
@@ -196,6 +225,9 @@ function convert_image_tags($content) {
     // Handle standard markdown images to ensure they have media prefix
     $pattern5 = '/!\[(.*?)\]\((?!media\/|http)([^)]+)\)/';
     $content = preg_replace($pattern5, '![$1](media/$2)', $content);
+    
+    // Final check for any remaining nested figures
+    $content = $flatten_nested_figures($content);
     
     return $content;
 }
