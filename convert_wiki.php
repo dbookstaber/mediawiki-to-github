@@ -284,81 +284,119 @@ function fix_existing_wiki_syntax($content) {
     return $content;
 }
 
-// Function to directly process all wiki image syntax in one step
-function process_wiki_images($content) {
-    // First ensure all image paths have media/ prefix
-    $content = preg_replace('/<img src="(?!media\/|http)([^"]+)/', '<img src="media/$1', $content);
+// Function to extract and preserve math expressions before Pandoc processing
+function preserveMathExpressions($wikiText, $debug = false) {
+    // Create storage for math expression placeholders
+    $placeholders = [];
     
-    // Handle title attributes that contain pipe-delimited content (alt|caption)
-    $content = preg_replace_callback('/<img ([^>]*) title="([^|]+)\|([^"]+)"([^>]*)>/', function($matches) {
-        $start = $matches[1];
-        $alt = trim($matches[2]);
-        $caption = trim($matches[3]);
-        $end = $matches[4];
-        
-        // Extract width if present
-        $width = "";
-        if (preg_match('/width="([^"]*)"/', $start . $end, $width_match)) {
-            $width = ' width="' . $width_match[1] . '"';
+    // Process the text to extract math expressions and replace them with placeholders
+    $processedText = processMathExpressions($wikiText, $placeholders, $debug);
+    
+    // Return the processed text, placeholders array, and any debug info
+    $debugInfo = '';
+    if ($debug) {
+        $debugInfo = "Found " . count($placeholders) . " math expressions to preserve";
+    }
+    
+    return [$processedText, $placeholders, $debugInfo];
+}
+
+// Function to process math expressions in wiki text
+function processMathExpressions($wikiText, &$placeholders, $debug = false) {
+    $mathExpressionCount = 0;
+    
+    // Match both <math> tags and $...$ LaTeX
+    $patterns = [
+        '/<math>(.*?)<\/math>/s', // <math> tags
+        '/\$(.*?)\$/s'  // $...$ LaTeX - be careful with this pattern as it might match currency symbols
+    ];
+    
+    foreach ($patterns as $index => $pattern) {
+        $wikiText = preg_replace_callback($pattern, function($matches) use (&$mathExpressionCount, &$placeholders, $index, $debug) {
+            $content = $matches[1];
+            
+            // Skip empty math blocks
+            if (trim($content) === '') {
+                return $matches[0];
+            }
+            
+            // Create unique placeholder ID for this math expression
+            $placeholderId = "MATH-" . dechex($mathExpressionCount) . "-" . dechex(rand(0, 65535));
+            
+            // Store the original math expression
+            $placeholders[$placeholderId] = $content;
+            
+            if ($debug && $mathExpressionCount < 5) {
+                echo "#$mathExpressionCount Type: " . ($index == 0 ? "math_tag" : "latex") . ", ID: $placeholderId\n";
+                echo "Original: " . $matches[0] . "\n";
+                echo "Content: $content\n";
+            }
+            
+            $mathExpressionCount++;
+            
+            // Return a placeholder that's unlikely to be modified by Pandoc
+            return "MATH{$placeholderId}ENDMATH";
+        }, $wikiText);
+    }
+    
+    if ($debug) {
+        echo "Found $mathExpressionCount math expressions.\n";
+        if ($mathExpressionCount > 5) {
+            echo "First 5 math expressions:\n";
+        }
+    }
+    
+    return $wikiText;
+}
+
+// Function to restore math expressions after Pandoc processing
+function restoreMathExpressions($markdownText, $placeholders, $debug = false) {
+    $restoredCount = 0;
+    $missedCount = 0;
+    $originalCount = count($placeholders);
+    
+    // First, check how many placeholders we can actually find
+    if ($debug) {
+        foreach ($placeholders as $id => $mathExp) {
+            $pattern = "/MATH" . preg_quote($id, '/') . "ENDMATH/";
+            
+            if (preg_match($pattern, $markdownText)) {
+                $restoredCount++;
+            } else {
+                $missedCount++;
+                echo "Missed placeholder: $id\n";
+                // Try to find similar patterns that might be modified
+                echo "Searching for similar patterns...\n";
+                if (preg_match_all("/MATH.*?ENDMATH/", $markdownText, $matches)) {
+                    echo "Found " . count($matches[0]) . " MATH placeholders\n";
+                    if (!empty($matches[0])) {
+                        echo "Sample: " . implode(", ", array_slice($matches[0], 0, 3)) . "\n";
+                    }
+                }
+            }
         }
         
-        // Get the src attribute
-        $src = "";
-        if (preg_match('/src="([^"]*)"/', $start . $end, $src_match)) {
-            $src = $src_match[1];
+        echo "Math expression restoration stats:\n";
+        echo "Original placeholders: $originalCount\n";
+        echo "Found placeholders: $restoredCount\n";
+        echo "Missing placeholders: $missedCount\n\n";
+    }
+    
+    // Now do the actual replacement
+    foreach ($placeholders as $id => $mathExp) {
+        $pattern = "/MATH" . preg_quote($id, '/') . "ENDMATH/";
+        
+        // For inline math (short expressions), use single $
+        if (strpos($mathExp, "\n") === false && strlen($mathExp) < 50) {
+            $markdownText = preg_replace($pattern, '$' . $mathExp . '$', $markdownText);
+        } 
+        // For display math (multiline or complex), use $$
+        else {
+            $markdownText = preg_replace($pattern, '$$' . $mathExp . '$$', $markdownText);
         }
-        
-        // Create a figure with figcaption
-        return "<figure>\n<img src=\"$src\"$width alt=\"$alt\" />\n<figcaption>$caption</figcaption>\n</figure>";
-    }, $content);
+    }
     
-    // Now replace all wiki image syntax with clean HTML or markdown
-    $pattern = '/\[\[(media\/[^|\]]+)(?:\|alt=(.*?))?(?:\|width=(\d+)px)?\]\]/';
-    $content = preg_replace_callback($pattern, function($matches) {
-        $img_src = $matches[1];
-        $alt = isset($matches[2]) ? trim($matches[2]) : "";
-        $width = isset($matches[3]) ? $matches[3] : "";
-        
-        // If we have alt text, use it as a caption with figure/figcaption
-        if (!empty($alt)) {
-            $width_attr = !empty($width) ? " width=\"$width\"" : "";
-            return "<figure>\n<img src=\"$img_src\"$width_attr alt=\"$alt\" />\n<figcaption>$alt</figcaption>\n</figure>";
-        } else {
-            // Otherwise use standard markdown
-            return "![](media/$img_src)";
-        }
-    }, $content);
-    
-    // Clean up standalone images with alt attributes
-    $content = preg_replace_callback('/<img ([^>]*)alt="([^|"]+)\|([^"]+)"([^>]*)>/', function($matches) {
-        $start = $matches[1];
-        $alt = trim($matches[2]);
-        $caption = trim($matches[3]);
-        $end = $matches[4];
-        
-        // Extract width if present
-        $width = "";
-        if (preg_match('/width="([^"]*)"/', $start . $end, $width_match)) {
-            $width = ' width="' . $width_match[1] . '"';
-        }
-        
-        // Get the src attribute
-        $src = "";
-        if (preg_match('/src="([^"]*)"/', $start . $end, $src_match)) {
-            $src = $src_match[1];
-        }
-        
-        // Create a figure with figcaption
-        return "<figure>\n<img src=\"$src\"$width alt=\"$alt\" />\n<figcaption>$caption</figcaption>\n</figure>";
-    }, $content);
-    
-    // Remove any nested figures that might remain
-    $content = preg_replace('/<figure>\s*<figure>(.*?)<\/figure>\s*<\/figure>/s', '<figure>$1</figure>', $content);
-    
-    // Remove duplicate figcaptions
-    $content = preg_replace('/<figcaption>(.*?)<\/figcaption>\s*<figcaption>(.*?)<\/figcaption>/s', '<figcaption>$1</figcaption>', $content);
-    
-    return $content;
+    return $markdownText;
 }
 
 foreach ($pages as $page) {
@@ -387,9 +425,24 @@ foreach ($pages as $page) {
     $safe_title = preg_replace('/[\\\\\/\:\*\?\"\<\>\|]/', '', str_replace(' ', '-', $title));
     $output_file = $output_dir . '/' . $safe_title . '.md';
     
-    // Create a temporary file with the MediaWiki content
+    // Enable debug mode for Angular Size page - fix the string comparison
+    $debug_math = ($title === 'Angular Size');
+    
+    echo "Converting: $title" . ($debug_math ? " (with math debug)" : "") . "\n";
+    
+    // Extract and preserve math expressions before Pandoc processing
+    list($processed_text, $math_placeholders, $mathDebugInfo) = preserveMathExpressions($text, $debug_math);
+    
+    // If we found math expressions in debug mode, write pre-processed content to a debug file
+    if ($debug_math && !empty($math_placeholders)) {
+        $debug_pre_file = $output_dir . '/' . $safe_title . '.pre.txt';
+        file_put_contents($debug_pre_file, $processed_text);
+        echo "  Saved pre-processed content to $debug_pre_file\n";
+    }
+    
+    // Create a temporary file with the processed MediaWiki content
     $temp_file = tempnam(sys_get_temp_dir(), 'mw2gfm');
-    file_put_contents($temp_file, $text);
+    file_put_contents($temp_file, $processed_text);
     
     // Run pandoc to convert from MediaWiki to GitHub Flavored Markdown
     $command = sprintf(
@@ -398,7 +451,6 @@ foreach ($pages as $page) {
         $output_file
     );
     
-    echo "Converting: $title\n";
     exec($command, $output, $return_code);
     
     // Clean up the temporary file
@@ -409,14 +461,22 @@ foreach ($pages as $page) {
         continue;
     }
     
-    // Get content and apply conversions
+    // Get content
     $content = file_get_contents($output_file);
     
-    // No longer adding the title at the top
-    // $content = "# $title\n\n" . $content;
+    // If debugging, save the content immediately after Pandoc conversion
+    if ($debug_math) {
+        $debug_post_file = $output_dir . '/' . $safe_title . '.post.txt';
+        file_put_contents($debug_post_file, $content);
+        echo "  Saved post-Pandoc content to $debug_post_file\n";
+    }
     
-    // Process wiki image syntax first
-    $content = process_wiki_images($content);
+    // Restore math expressions
+    $content = restoreMathExpressions($content, $math_placeholders, $debug_math);
+    
+    // Process image references
+    $content = fix_media_references($content);
+    $content = convert_image_tags($content);
     
     // Process section headers
     $content = convert_section_headers($content);
@@ -424,6 +484,9 @@ foreach ($pages as $page) {
     
     // Process internal links
     $content = convert_internal_links($content);
+    
+    // Fix existing wiki syntax if any
+    $content = fix_existing_wiki_syntax($content);
     
     file_put_contents($output_file, $content);
     
