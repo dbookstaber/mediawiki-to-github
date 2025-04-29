@@ -36,7 +36,7 @@ php convert_wiki.php <mediawiki_export.xml> [output_directory]
 ### Example
 
 ```
-php convert_wiki.php my_wiki_export.xml github_wiki_pages
+php convert_wiki.php example/sample_export.xml github_wiki_pages
 ```
 
 ## How to Export from MediaWiki

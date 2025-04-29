@@ -17,10 +17,8 @@ temp/
 tmp/
 
 # Output directories (users should generate these themselves)
-wiki_output_fixed/
-wiki_output/
-output/
+github_wiki_pages/
 
 # Test files (if any)
 test/
-test*.xml
+*.xml

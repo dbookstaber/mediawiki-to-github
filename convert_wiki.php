@@ -56,7 +56,10 @@ if (empty($pages)) {
 
 echo "Found " . count($pages) . " pages to convert.\n";
 
-// Create a Home.md file that will serve as the wiki index
+// Track if we've seen a Home page
+$has_home_page = false;
+
+// Create a Home.md file that will serve as the wiki index if no Home page exists
 $home_content = "# Wiki Home\n\n";
 $home_content .= "Welcome to the wiki. Click on the links below to navigate the content:\n\n";
 
@@ -336,6 +339,11 @@ foreach ($pages as $page) {
         echo "Skipping empty page: $title\n";
         continue;
     }
+
+    // Check if this is the Home page
+    if ($title === 'Home') {
+        $has_home_page = true;
+    }
     
     // Clean the title for use as a filename
     $safe_title = preg_replace('/[\\\\\/\:\*\?\"\<\>\|]/', '', str_replace(' ', '-', $title));
@@ -363,6 +371,18 @@ foreach ($pages as $page) {
         continue;
     }
     
+    // Debug output file
+    echo "  - Output file created: " . (file_exists($output_file) ? "Yes" : "No") . "\n";
+    if (file_exists($output_file)) {
+        $file_size = filesize($output_file);
+        echo "  - Output file size: " . $file_size . " bytes\n";
+        if ($file_size > 0) {
+            echo "  - First 100 chars of output: " . substr(file_get_contents($output_file), 0, 100) . "...\n";
+        } else {
+            echo "  - WARNING: Output file is empty!\n";
+        }
+    }
+    
     // Get content and apply conversions
     $content = file_get_contents($output_file);
     
@@ -381,15 +401,21 @@ foreach ($pages as $page) {
     
     file_put_contents($output_file, $content);
     
-    // Add page to Home.md and _Sidebar.md
-    $home_content .= "* [$title]($safe_title)\n";
+    // Add page to navigation pages, but don't add Home to itself
+    if ($title !== 'Home') {
+        $home_content .= "* [$title]($safe_title)\n";
+    }
     $sidebar_content .= "* [$title]($safe_title)\n";
     
     $converted_pages++;
 }
 
-// Write Home.md and _Sidebar.md
-file_put_contents($output_dir . '/Home.md', $home_content);
+// Only create the auto-generated Home.md if no actual Home page was found
+if (!$has_home_page) {
+    file_put_contents($output_dir . '/Home.md', $home_content);
+}
+
+// Write _Sidebar.md
 file_put_contents($output_dir . '/_Sidebar.md', $sidebar_content);
 
 // Create media directory
