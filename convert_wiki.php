@@ -315,118 +315,57 @@ function fix_existing_wiki_syntax($content) {
     return $content;
 }
 
-// Function to extract and preserve math expressions before Pandoc processing
 function preserveMathExpressions($wikiText, $debug = false) {
-    // Create storage for math expression placeholders
     $placeholders = [];
-    
-    // Process the text to extract math expressions and replace them with placeholders
-    $processedText = processMathExpressions($wikiText, $placeholders, $debug);
-    
-    // Return the processed text, placeholders array, and any debug info
+    $processedText = processMathExpressions($wikiText, $placeholders, false); // debug always false
     $debugInfo = '';
-    if ($debug) {
-        $debugInfo = "Found " . count($placeholders) . " math expressions to preserve";
-    }
-    
     return [$processedText, $placeholders, $debugInfo];
 }
 
-// Function to process math expressions in wiki text
 function processMathExpressions($wikiText, &$placeholders, $debug = false) {
     $mathExpressionCount = 0;
-    
-    // Match both <math> tags and $...$ LaTeX
     $patterns = [
-        '/<math>(.*?)<\/math>/s', // <math> tags
-        '/\$(.*?)\$/s'  // $...$ LaTeX - be careful with this pattern as it might match currency symbols
+        '/<math>(.*?)<\/math>/s',
+        '/\$(.*?)\$/s'
     ];
-    
     foreach ($patterns as $index => $pattern) {
-        $wikiText = preg_replace_callback($pattern, function($matches) use (&$mathExpressionCount, &$placeholders, $index, $debug) {
+        $wikiText = preg_replace_callback($pattern, function($matches) use (&$mathExpressionCount, &$placeholders) {
             $content = $matches[1];
-            
-            // Skip empty math blocks
             if (trim($content) === '') {
                 return $matches[0];
             }
-            
-            // Create unique placeholder ID for this math expression
             $placeholderId = "MATH-" . dechex($mathExpressionCount) . "-" . dechex(rand(0, 65535));
-            
-            // Store the original math expression
             $placeholders[$placeholderId] = $content;
-            
-            if ($debug && $mathExpressionCount < 5) {
-                echo "#$mathExpressionCount Type: " . ($index == 0 ? "math_tag" : "latex") . ", ID: $placeholderId\n";
-                echo "Original: " . $matches[0] . "\n";
-                echo "Content: $content\n";
-            }
-            
             $mathExpressionCount++;
-            
-            // Return a placeholder that's unlikely to be modified by Pandoc
-            return "MATH{$placeholderId}ENDMATH";
+            return "@@MATH-{$placeholderId}@@";
         }, $wikiText);
     }
-    
-    if ($debug) {
-        echo "Found $mathExpressionCount math expressions.\n";
-        if ($mathExpressionCount > 5) {
-            echo "First 5 math expressions:\n";
-        }
-    }
-    
     return $wikiText;
 }
 
-// Function to restore math expressions after Pandoc processing
 function restoreMathExpressions($markdownText, $placeholders, $debug = false) {
-    $restoredCount = 0;
-    $missedCount = 0;
-    $originalCount = count($placeholders);
-    
-    // First, check how many placeholders we can actually find
-    if ($debug) {
-        foreach ($placeholders as $id => $mathExp) {
-            $pattern = "/MATH" . preg_quote($id, '/') . "ENDMATH/";
-            
-            if (preg_match($pattern, $markdownText)) {
-                $restoredCount++;
-            } else {
-                $missedCount++;
-                echo "Missed placeholder: $id\n";
-                // Try to find similar patterns that might be modified
-                echo "Searching for similar patterns...\n";
-                if (preg_match_all("/MATH.*?ENDMATH/", $markdownText, $matches)) {
-                    echo "Found " . count($matches[0]) . " MATH placeholders\n";
-                    if (!empty($matches[0])) {
-                        echo "Sample: " . implode(", ", array_slice($matches[0], 0, 3)) . "\n";
-                    }
-                }
-            }
-        }
-        
-        echo "Math expression restoration stats:\n";
-        echo "Original placeholders: $originalCount\n";
-        echo "Found placeholders: $restoredCount\n";
-        echo "Missing placeholders: $missedCount\n\n";
-    }
-    
-    // Now do the actual replacement
     foreach ($placeholders as $id => $mathExp) {
-        $pattern = "/MATH" . preg_quote($id, '/') . "ENDMATH/";
-        
+        $safeId = preg_quote($id, '/');
+        $pattern = '/@+\s*M\s*A\s*T\s*H\s*-\s*' .
+            preg_replace('/([a-f0-9]+)/i', '$1\\s*', $safeId) . '@+@+/is';
+        $pattern2 = '/@@MATH-' . $safeId . '@@/s';
         // For inline math (short expressions), use single $
         if (strpos($mathExp, "\n") === false && strlen($mathExp) < 50) {
-            $markdownText = preg_replace($pattern, '$' . $mathExp . '$', $markdownText);
+            $markdownTextNew = preg_replace($pattern, '\$' . $mathExp . '\$', $markdownText, -1, $count1);
+            if ($count1 == 0) {
+                $markdownTextNew = preg_replace($pattern2, '\$' . $mathExp . '\$', $markdownText, -1, $count2);
+            }
+            $markdownText = $markdownTextNew;
         } 
         // For display math (multiline or complex), use $$
         else {
-            $markdownText = preg_replace($pattern, '$$' . $mathExp . '$$', $markdownText);
+            $markdownTextNew = preg_replace($pattern, '\$\$' . $mathExp . '\$\$', $markdownText, -1, $count1);
+            if ($count1 == 0) {
+                $markdownTextNew = preg_replace($pattern2, '\$\$' . $mathExp . '\$\$', $markdownText, -1, $count2);
+            }
+            $markdownText = $markdownTextNew;
         }
     }
-    
     return $markdownText;
 }
 
@@ -456,8 +395,8 @@ foreach ($pages as $page) {
     $safe_title = preg_replace('/[\\\\\/\:\*\?\"\<\>\|]/', '', str_replace(' ', '-', $title));
     $output_file = $output_dir . '/' . $safe_title . '.md';
     
-    // Enable debug mode for Angular Size page - fix the string comparison
-    $debug_math = ($title === 'Angular Size');
+    // Enable debug mode for specific page name if desired
+    $debug_math = ($title === '');
     
     echo "Converting: $title" . ($debug_math ? " (with math debug)" : "") . "\n";
     
