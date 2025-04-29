@@ -136,13 +136,19 @@ function convert_image_tags($content) {
         if (strpos($caption, '|') !== false) {
             $caption_parts = explode('|', $caption);
             $caption = end($caption_parts); // Take the last part after pipes
+            $caption = preg_replace('/\s+/', ' ', $caption); // Remove any linebreaks
         }
         
         // Create clean alt text from caption
         $alt_text = strip_tags($caption);
-        $alt = ' alt="' . htmlspecialchars($alt_text) . '"';
-        
-        return "<figure>\n<img src=\"$img_src\"$width$alt />\n<figcaption>$caption</figcaption>\n</figure>";
+        $alt = htmlspecialchars($alt_text) . '"';
+        $alt = preg_replace('/\s+/', ' ', $alt); // Remove any linebreaks
+        $img = "![$alt]($img_src)";
+        $lines = explode("\n", $img . "\n\n" . $caption . "\n");
+        foreach ($lines as &$line) {
+            $line = '> ' . $line;
+        }
+        return implode("\n", $lines);
     }, $content);
     
     // Pattern to match standalone img tags
@@ -174,17 +180,17 @@ function convert_image_tags($content) {
                 $alt_text = end($alt_parts); // Take the last part after pipes
             }
             
-            $alt = ' alt="' . htmlspecialchars($alt_text) . '"';
-            $caption = $alt_text;
+            $alt = htmlspecialchars($alt_text) . '"';
+            $alt = preg_replace('/\s+/', ' ', $alt); // Remove any linebreaks
+            $caption = preg_replace('/\s+/', ' ', $alt_text);
         }
         
-        // If we have a caption, use figure/figcaption
-        if (!empty($caption)) {
-            return "<figure>\n<img src=\"$img_src\"$width$alt />\n<figcaption>$caption</figcaption>\n</figure>";
-        } else {
-            // Otherwise use standard markdown
-            return "![]($img_src)";
+        $img = "![$alt]($img_src)";
+        $lines = explode("\n", $img . "\n\n" . $caption . "\n");
+        foreach ($lines as &$line) {
+            $line = '> ' . $line;
         }
+        return implode("\n", $lines);
     }, $content);
     
     // Convert wiki-style image syntax with pipe-delimited parts
