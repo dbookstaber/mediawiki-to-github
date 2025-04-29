@@ -289,6 +289,29 @@ function process_wiki_images($content) {
     // First ensure all image paths have media/ prefix
     $content = preg_replace('/<img src="(?!media\/|http)([^"]+)/', '<img src="media/$1', $content);
     
+    // Handle title attributes that contain pipe-delimited content (alt|caption)
+    $content = preg_replace_callback('/<img ([^>]*) title="([^|]+)\|([^"]+)"([^>]*)>/', function($matches) {
+        $start = $matches[1];
+        $alt = trim($matches[2]);
+        $caption = trim($matches[3]);
+        $end = $matches[4];
+        
+        // Extract width if present
+        $width = "";
+        if (preg_match('/width="([^"]*)"/', $start . $end, $width_match)) {
+            $width = ' width="' . $width_match[1] . '"';
+        }
+        
+        // Get the src attribute
+        $src = "";
+        if (preg_match('/src="([^"]*)"/', $start . $end, $src_match)) {
+            $src = $src_match[1];
+        }
+        
+        // Create a figure with figcaption
+        return "<figure>\n<img src=\"$src\"$width alt=\"$alt\" />\n<figcaption>$caption</figcaption>\n</figure>";
+    }, $content);
+    
     // Now replace all wiki image syntax with clean HTML or markdown
     $pattern = '/\[\[(media\/[^|\]]+)(?:\|alt=(.*?))?(?:\|width=(\d+)px)?\]\]/';
     $content = preg_replace_callback($pattern, function($matches) {
@@ -306,19 +329,34 @@ function process_wiki_images($content) {
         }
     }, $content);
     
+    // Clean up standalone images with alt attributes
+    $content = preg_replace_callback('/<img ([^>]*)alt="([^|"]+)\|([^"]+)"([^>]*)>/', function($matches) {
+        $start = $matches[1];
+        $alt = trim($matches[2]);
+        $caption = trim($matches[3]);
+        $end = $matches[4];
+        
+        // Extract width if present
+        $width = "";
+        if (preg_match('/width="([^"]*)"/', $start . $end, $width_match)) {
+            $width = ' width="' . $width_match[1] . '"';
+        }
+        
+        // Get the src attribute
+        $src = "";
+        if (preg_match('/src="([^"]*)"/', $start . $end, $src_match)) {
+            $src = $src_match[1];
+        }
+        
+        // Create a figure with figcaption
+        return "<figure>\n<img src=\"$src\"$width alt=\"$alt\" />\n<figcaption>$caption</figcaption>\n</figure>";
+    }, $content);
+    
     // Remove any nested figures that might remain
     $content = preg_replace('/<figure>\s*<figure>(.*?)<\/figure>\s*<\/figure>/s', '<figure>$1</figure>', $content);
     
     // Remove duplicate figcaptions
     $content = preg_replace('/<figcaption>(.*?)<\/figcaption>\s*<figcaption>(.*?)<\/figcaption>/s', '<figcaption>$1</figcaption>', $content);
-    
-    // Split title attributes that contain pipe delimited parts
-    $content = preg_replace_callback('/<img ([^>]*) title="([^|]+)\|([^"]+)"([^>]*)>/', function($matches) {
-        $start = $matches[1];
-        $caption = trim($matches[3]);
-        $end = $matches[4];
-        return "<img $start alt=\"$caption\" title=\"$caption\"$end>";
-    }, $content);
     
     return $content;
 }
@@ -369,18 +407,6 @@ foreach ($pages as $page) {
     if ($return_code !== 0) {
         echo "Error converting page: $title\n";
         continue;
-    }
-    
-    // Debug output file
-    echo "  - Output file created: " . (file_exists($output_file) ? "Yes" : "No") . "\n";
-    if (file_exists($output_file)) {
-        $file_size = filesize($output_file);
-        echo "  - Output file size: " . $file_size . " bytes\n";
-        if ($file_size > 0) {
-            echo "  - First 100 chars of output: " . substr(file_get_contents($output_file), 0, 100) . "...\n";
-        } else {
-            echo "  - WARNING: Output file is empty!\n";
-        }
     }
     
     // Get content and apply conversions
