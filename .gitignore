@@ -1,0 +1,26 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor/IDE Files
+.idea/
+.vscode/
+*.sublime-*
+*.swp
+*.swo
+
+# Temporary and log files
+*.log
+*.tmp
+temp/
+tmp/
+
+# Output directories (users should generate these themselves)
+wiki_output_fixed/
+wiki_output/
+output/
+
+# Test files (if any)
+test/
+test*.xml

@@ -77,7 +77,6 @@ After running the converter:
 - Creates a Home.md file with links to all pages
 - Creates a _Sidebar.md file for navigation
 - Copies media files from the source to the output directory
-- Works on Windows systems (unlike many other converters)
 
 ## Limitations
 
@@ -88,10 +87,6 @@ After running the converter:
 ## Contributing
 
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Credits
 
