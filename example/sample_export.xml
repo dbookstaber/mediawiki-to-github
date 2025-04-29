@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mediawiki.org/xml/export-0.10/ http://www.mediawiki.org/xml/export-0.10.xsd" version="0.10" xml:lang="en">
+  <siteinfo>
+    <sitename>Sample Wiki</sitename>
+    <dbname>sample_wiki</dbname>
+    <base>http://example.org/wiki/Main_Page</base>
+    <generator>MediaWiki 1.35.0</generator>
+    <case>first-letter</case>
+    <namespaces>
+      <namespace key="0" case="first-letter" />
+      <namespace key="1" case="first-letter">Talk</namespace>
+    </namespaces>
+  </siteinfo>
+  <page>
+    <title>Main Page</title>
+    <ns>0</ns>
+    <id>1</id>
+    <revision>
+      <id>1</id>
+      <timestamp>2025-04-01T12:00:00Z</timestamp>
+      <contributor>
+        <username>Admin</username>
+        <id>1</id>
+      </contributor>
+      <comment>Initial page</comment>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+      <text xml:space="preserve">= Welcome to Our Wiki =
+
+This is the main page of our wiki. You can find useful links below:
+
+== Important Pages ==
+
+* [[Getting Started]]
+* [[User Guide]]
+* [[Project Documentation]]
+
+== About ==
+
+This wiki contains documentation for our project. Feel free to browse around!
+
+[[File:sample_image.jpg|thumb|300px|This is a sample image]]
+
+== External Links ==
+
+* [https://github.com/ GitHub]
+* [https://www.mediawiki.org/ MediaWiki]</text>
+    </revision>
+  </page>
+  <page>
+    <title>Getting Started</title>
+    <ns>0</ns>
+    <id>2</id>
+    <revision>
+      <id>2</id>
+      <timestamp>2025-04-01T12:30:00Z</timestamp>
+      <contributor>
+        <username>Admin</username>
+        <id>1</id>
+      </contributor>
+      <comment>Getting started guide</comment>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+      <text xml:space="preserve">= Getting Started =
+
+Welcome to the getting started guide. This document will help you begin using our product.
+
+== Installation ==
+
+To install the software, follow these steps:
+
+# Download the installer from our website
+# Run the installer
+# Follow the on-screen instructions
+# Restart your computer
+
+== Configuration ==
+
+After installation, you need to configure the software:
+
+{| class="wikitable"
+|-
+! Setting
+! Description
+! Default Value
+|-
+| Port
+| The network port to listen on
+| 8080
+|-
+| Log Level
+| Verbosity of logging
+| INFO
+|-
+| Auto Update
+| Whether to check for updates automatically
+| true
+|}
+
+== Troubleshooting ==
+
+If you encounter any issues, please see the [[User Guide#Troubleshooting|Troubleshooting section]] in the User Guide.
+
+[[File:setup_diagram.png|center|500px|Setup diagram]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>User Guide</title>
+    <ns>0</ns>
+    <id>3</id>
+    <revision>
+      <id>3</id>
+      <timestamp>2025-04-01T13:00:00Z</timestamp>
+      <contributor>
+        <username>Admin</username>
+        <id>1</id>
+      </contributor>
+      <comment>User guide</comment>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+      <text xml:space="preserve">= User Guide =
+
+This comprehensive user guide will help you use our software effectively.
+
+== Features ==
+
+Our software includes the following features:
+
+* Data analysis
+* Reporting
+* Export to various formats
+* Collaboration
+
+== Math Support ==
+
+The software supports mathematical formulas:
+
+<math>f(x) = \int_{-\infty}^x e^{-t^2} dt</math>
+
+And also inline formulas like <math>E = mc^2</math>.
+
+== Troubleshooting ==
+
+=== Common Issues ===
+
+Here are some common issues and their solutions:
+
+* '''Application won't start''': Check that all dependencies are installed
+* '''Slow performance''': Try clearing the cache
+* '''Export fails''': Ensure you have write permissions to the output directory
+
+=== Error Codes ===
+
+|+ Error Codes
+|-
+! Code
+! Description
+! Solution
+|-
+| E001
+| Database connection error
+| Check database credentials
+|-
+| E002
+| Invalid input format
+| Review the input file format
+|-
+| E003
+| Out of memory
+| Increase available memory
+</text>
+    </revision>
+  </page>
+</mediawiki>
