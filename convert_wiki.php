@@ -243,8 +243,8 @@ function convert_internal_links($content) {
         // Replace underscores with dashes for GitHub wiki compatibility
         $pageName = str_replace('_', '-', $pageName);
         
-        // Convert to GitHub wiki link format: [[PageName|link text]]
-        return "[[$pageName|$linkText]]";
+        // Convert to GitHub wiki link format: [[link text|PageName]]
+        return "[[$linkText|$pageName]]";
     }, $content);
 }
 
@@ -457,7 +457,18 @@ foreach ($pages as $page) {
     
     // Fix existing wiki syntax if any
     $content = fix_existing_wiki_syntax($content);
-    
+
+    // Remove line breaks inside [[]] links
+    $content = preg_replace_callback('/\[\[[^\]]*\]\]/s', function($m) {
+        return preg_replace('/\s+/', ' ', $m[0]);
+    }, $content);
+    // Remove line breaks inside [] links (but not images)
+    $content = preg_replace_callback('/(?<!\!)\[[^\]]*\]/s', function($m) {
+        return preg_replace('/\s+/', ' ', $m[0]);
+    }, $content);
+    // Ensure an empty line after </figure>
+    $content = preg_replace('/(<\/figure>)(?!\s*\n)/i', "$1\n\n", $content);
+
     file_put_contents($output_file, $content);
     
     // Add page to navigation pages, but don't add Home to itself

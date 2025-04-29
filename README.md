@@ -6,10 +6,13 @@ A Windows-compatible PHP script to convert MediaWiki XML exports to GitHub Flavo
 
 This tool converts MediaWiki XML export files to GitHub Flavored Markdown, making it easy to migrate your content from MediaWiki to GitHub Wiki. It has been specifically designed to:
 
-- Work on Windows systems (unlike some other converters)
-- Properly handle media/image references
+- Work on Windows systems
 - Create navigation files for GitHub Wiki
 - Maintain the structure of your wiki content
+- Properly handle media/image references and captions
+- Handle MathJAX and LaTeX.
+
+It was developed to migrate the [Ballistipedia](http://ballistipedia.com/) wiki to https://github.com/dbookstaber/ballistipedia/wiki.
 
 ## Requirements
 
